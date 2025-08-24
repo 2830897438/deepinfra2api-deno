@@ -27,10 +27,9 @@ export default {
       "meta-llama/Llama-3.3-70B-Instruct"
     ]);
 
-    // Get URL and pathname to handle routing
     const url = new URL(request.url);
 
-    // --- ADDED: Handle GET /v1/models endpoint ---
+    // Handle GET /v1/models endpoint
     if (url.pathname === "/v1/models" && request.method === "GET") {
       const modelList = Array.from(allowedModels).map(modelId => ({
         id: modelId,
@@ -52,7 +51,6 @@ export default {
         },
       });
     }
-    // --- END of ADDED section ---
 
     // Handle CORS preflight request for other endpoints
     if (request.method === "OPTIONS") {
@@ -76,29 +74,28 @@ export default {
       return new Response("Method not allowed", { status: 405 });
     }
 
-    // Validate Authorization header
+    // --- MODIFIED: Hardcoded Authorization ---
     const authHeader = request.headers.get("Authorization");
-    const TOKEN = Deno.env.get("TOKEN");
-    if (TOKEN) {
-      if (!authHeader || authHeader !== `Bearer ${TOKEN}`) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-          }
-        });
-      }
+    const TOKEN = "123"; // The token is now hardcoded here.
+
+    // The check is now mandatory.
+    if (!authHeader || authHeader !== `Bearer ${TOKEN}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      });
     }
+    // --- END of MODIFICATION ---
 
     try {
-      // Clone request body
       const body = await request.json();
 
-      // Validate the model from the request body
       if (!body.model || !allowedModels.has(body.model)) {
         return new Response(JSON.stringify({ error: "Invalid or unsupported model specified." }), {
-          status: 400, // 400 Bad Request
+          status: 400,
           headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*"
@@ -106,7 +103,6 @@ export default {
         });
       }
 
-      // Construct new request headers
       const headers = new Headers({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0",
         "Accept": "text/event-stream",
@@ -123,14 +119,12 @@ export default {
         "Referer": "https://deepinfra.com/"
       });
 
-      // Send request to DeepInfra
       const response = await fetch("https://api.deepinfra.com/v1/openai/chat/completions", {
         method: "POST",
         headers: headers,
         body: JSON.stringify(body)
       });
 
-      // Construct response
       const newResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
